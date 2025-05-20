@@ -47,7 +47,7 @@ app.get('/auth/github/callback', passport.authenticate('github', {
   session: true
 }), (req, res) => {
   console.log('User authenticated:', req.user);
-  res.redirect('https://github-oath-frontend.onrender.com');
+  res.redirect('https://github-oath-frontend.onrender.com/dashboard');
 });
 
 app.get('/api/repo', ensureAuthenticated, async (req, res) => {
