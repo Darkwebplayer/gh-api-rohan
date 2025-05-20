@@ -1,0 +1,94 @@
+/* Dashboard.css */
+
+body {
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dashboard {
+  padding-bottom: 50px;
+}
+
+.dashboard-header {
+  background-color: #161b22;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-header h2 {
+  font-weight: 600;
+  font-size: 1.5rem;
+}
+
+.dashboard .container h3 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+}
+
+.repo-card {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1.2rem;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+}
+
+.repo-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.repo-card h5 {
+  font-size: 1.1rem;
+  color: #58a6ff;
+  margin-bottom: 0.5rem;
+}
+
+.repo-card p {
+  font-size: 0.9rem;
+  color: #8b949e;
+}
+
+.repo-card .btn {
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-outline-warning {
+  color: #f0b72f;
+  border-color: #f0b72f;
+}
+
+.btn-outline-warning:hover {
+  background-color: #f0b72f;
+  color: #0d1117;
+}
+
+.btn-outline-success {
+  color: #3fb950;
+  border-color: #3fb950;
+}
+
+.btn-outline-success:hover {
+  background-color: #3fb950;
+  color: #0d1117;
+}
+
+a.btn-outline-light {
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border: 1px solid #c9d1d9;
+  border-radius: 5px;
+}
+
+a.btn-outline-light:hover {
+  background-color: #c9d1d9;
+  color: #0d1117;
+  text-decoration: none;
+}
+
+.zindex-dropdown {
+  z-index: 1000;
+}
