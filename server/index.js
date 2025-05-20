@@ -9,7 +9,7 @@ require('dotenv').config();
 const app = express();
 const PORT = 3001;
 
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(cors({ origin: 'https://github-oath-frontend.onrender.com', credentials: true }));
 app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: false }));
 app.use(passport.initialize());
 app.use(passport.session());
