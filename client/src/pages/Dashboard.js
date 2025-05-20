@@ -9,18 +9,30 @@ import RepoCard from '../components/RepoCard';
 const Dashboard = () => {
   const [repos, setRepos] = useState([]);
   const [searchResult, setSearchResult] = useState(null);
+  const [user, setUser] = useState(null);
   useEffect(() => {
-    const fetchRepos = async () => {
+    const checkAuthAndFetchRepos = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/repo`, { withCredentials: true });
-        setRepos(response.data);
+        // Step 1: Check if user is authenticated
+        const userResponse = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/user`, {
+          withCredentials: true,
+        });
+        console.log("User:", userResponse.data);
+        setUser(userResponse.data);
+
+        // Step 2: Fetch repositories
+        const repoResponse = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/repo`, {
+          withCredentials: true,
+        });
+        setRepos(repoResponse.data);
       } catch (error) {
-        console.error('Error fetching repositories', error);
+        console.error("Authentication or Repo Fetch Failed:", error);
       }
     };
-    fetchRepos();
-  }, []);
 
+    checkAuthAndFetchRepos();
+  }, []);
+  
   return (
     <div className="dashboard container-fluid bg-light text-dark min-vh-100">
       <header className="dashboard-header bg-dark text-white p-3 d-flex align-items-center justify-content-between border-bottom border-secondary">

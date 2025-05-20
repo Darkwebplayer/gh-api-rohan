@@ -7,10 +7,10 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 app.use(cors({ origin: 'https://github-oath-frontend.onrender.com', credentials: true }));
-app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: false }));
+app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: false,cookie: {sameSite: 'none',  secure: true     } }));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -35,6 +35,17 @@ app.get('/', (req, res) => {
   res.send('Welcome to the GitHub OAuth Dashboard API');
 }
 );
+
+// Get authenticated user info
+app.get('/api/user', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json(req.user);
+  } else {
+    res.status(401).json({ error: 'Not authenticated' });
+  }
+});
+
+
 
 
 app.get('/auth/github', passport.authenticate('github', { scope: ['user', 'repo'] }));
@@ -194,7 +205,7 @@ app.get('/logout', (req, res) => {
     }
     req.session.destroy(() => {
       res.clearCookie('connect.sid'); // Clear session cookie
-      res.redirect('http://localhost:3000'); // Frontend login page
+      res.redirect('https://github-oath-frontend.onrender.com');
     });
   });
 });
