@@ -25,7 +25,7 @@ const RepoSearchBar = () => {
 
   const fetchSuggestions = async (query) => {
     try {
-      const res = await axios.get(`http://localhost:3001/api/suggest?query=${query}`, {
+      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/suggest?query=${query}`, {
         withCredentials: true,
       });
       setSuggestions(res.data);

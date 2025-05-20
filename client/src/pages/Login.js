@@ -3,7 +3,7 @@ import './Login.css';
 
 const Login = () => {
   const handleLogin = () => {
-    window.location.href = 'http://localhost:3001/auth/github';
+    window.location.href = `${process.env.REACT_APP_BACKEND_URL}/auth/github`;
   };
 
   return (

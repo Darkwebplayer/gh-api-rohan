@@ -16,7 +16,7 @@ const SearchResults = () => {
     const fetchSearchResults = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`http://localhost:3001/api/search?query=${query}`, {
+        const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/search?query=${query}`, {
           withCredentials: true,
         });
         setResults(res.data);

@@ -12,7 +12,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchRepos = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/repo', { withCredentials: true });
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/repo`, { withCredentials: true });
         setRepos(response.data);
       } catch (error) {
         console.error('Error fetching repositories', error);
@@ -37,7 +37,7 @@ const Dashboard = () => {
           <button
             className="btn btn-outline-light border border-secondary text-white d-flex align-items-center gap-2 px-3 py-1"
             onClick={() => {
-              window.location.href = 'http://localhost:3001/logout';
+              window.location.href = `${process.env.REACT_APP_BACKEND_URL}/logout`;
             }}
             style={{
               backgroundColor: '#24292e',

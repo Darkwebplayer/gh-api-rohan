@@ -11,7 +11,7 @@ function IssueList() {
   const [issues, setIssues] = useState([]);
 
   useEffect(() => {
-    axios.get(`http://localhost:3001/api/repo/${id}/issues`, { withCredentials: true })
+    axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/repo/${id}/issues`, { withCredentials: true })
       .then(res => setIssues(res.data))
       .catch(err => console.error(err));
   }, [id]);
