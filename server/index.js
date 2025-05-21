@@ -9,7 +9,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: 'https://github-oath-frontend.onrender.com', credentials: true }));
+app.use(cors({ origin: `${process.env.REACT_APP_BACKEND_URL}`, credentials: true }));
 app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: false,cookie: {sameSite: 'none',  secure: true     } }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -54,11 +54,11 @@ app.get('/auth/github', passport.authenticate('github', { scope: ['user', 'repo'
 // }
 // );
 app.get('/auth/github/callback', passport.authenticate('github', {
-  failureRedirect: '/login',
+  failureRedirect: `${process.env.REACT_APP_FRONTEND_URL}/login`,
   session: true
 }), (req, res) => {
   console.log('User authenticated:', req.user);
-  res.redirect('https://github-oath-frontend.onrender.com/dashboard');
+  res.redirect(`${process.env.REACT_APP_FRONTEND_UR}`);
 });
 
 app.get('/api/repo', ensureAuthenticated, async (req, res) => {
