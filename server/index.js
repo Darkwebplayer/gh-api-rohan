@@ -9,7 +9,10 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: `${process.env.REACT_APP_FRONTEND_URL}`, credentials: true }));
+app.use(cors({
+  origin: process.env.REACT_APP_FRONTEND_URL,
+  credentials: true
+}));
 app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: false,cookie: {sameSite: 'none',  secure: true     } }));
 app.use(passport.initialize());
 app.use(passport.session());
