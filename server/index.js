@@ -58,7 +58,7 @@ app.get('/auth/github/callback', passport.authenticate('github', {
   session: true
 }), (req, res) => {
   console.log('User authenticated:', req.user);
-  res.redirect(`${process.env.REACT_APP_FRONTEND_UR}`);
+  res.redirect(`${process.env.REACT_APP_FRONTEND_URL}`);
 });
 
 app.get('/api/repo', ensureAuthenticated, async (req, res) => {
