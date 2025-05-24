@@ -6,28 +6,41 @@ import axios from 'axios';
 import RepoSearchBar from '../components/RepoSearchBar';
 import RepoCard from '../components/RepoCard';
 
+const api = axios.create({
+  baseURL: process.env.REACT_APP_BACKEND_URL,
+  withCredentials: true, // Critical for cross-domain cookies
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 const Dashboard = () => {
   const [repos, setRepos] = useState([]);
   const [searchResult, setSearchResult] = useState(null);
   const [user, setUser] = useState(null);
+
   useEffect(() => {
     const checkAuthAndFetchRepos = async () => {
       try {
+        setLoading(true);
+
+        // Log cookies for debugging
+        console.log('Cookies before request:', document.cookie);
+
         // Step 1: Check if user is authenticated
-        const userResponse = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/user`, {
-          withCredentials: true,  // CRITICAL for cross-domain cookies
-        });
-        console.log("User:", userResponse.data);
+        const userResponse = await api.get('/api/user');
+        console.log("User data received:", userResponse.data);
         setUser(userResponse.data);
 
         // Step 2: Fetch repositories
-        const repoResponse = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/repo`, {
-          withCredentials: true,
-        });
+        const repoResponse = await api.get('/api/repo');
         setRepos(repoResponse.data);
+        setLoading(false);
       } catch (error) {
         console.error("Authentication or Repo Fetch Failed:", error);
-        // Redirect to login if authentication fails
+        setError(error);
+        setLoading(false);
+
+        // Redirect to login if unauthorized
         if (error.response && error.response.status === 401) {
           window.location.href = '/';
         }
@@ -36,6 +49,7 @@ const Dashboard = () => {
 
     checkAuthAndFetchRepos();
   }, []);
+
 
   return (
     <div className="dashboard container-fluid bg-light text-dark min-vh-100">
