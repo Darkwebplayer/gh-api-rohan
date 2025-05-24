@@ -9,24 +9,42 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+
+// Trust proxy MUST be set before other middleware
 app.set('trust proxy', 1);
+
+// Add explicit CORS headers for all requests
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', process.env.REACT_APP_FRONTEND_URL);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// Keep the existing CORS middleware as well
 app.use(cors({
-  origin: process.env.REACT_APP_FRONTEND_URL, // Your Vercel frontend URL
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  exposedHeaders: ['Set-Cookie']
+  origin: process.env.REACT_APP_FRONTEND_URL,
+  credentials: true
 }));
+
 // Use environment variable for session secret
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'keyboard cat',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    sameSite: 'none', // MUST be 'none' for cross-site cookies
-    secure: true,     // MUST be true with sameSite=none
+    sameSite: 'none',     // Must be 'none' for cross-domain
+    secure: true,         // Required with sameSite=none
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    path: '/'            // Ensure cookie is sent for all paths
   },
   proxy: true // Trust the reverse proxy
 }));
@@ -74,19 +92,27 @@ app.get('/auth/github', passport.authenticate('github', { scope: ['user', 'repo'
 // }
 // );
 
+
 app.get('/auth/github/callback', passport.authenticate('github', {
   failureRedirect: `${process.env.REACT_APP_FRONTEND_URL}/login`,
   session: true
 }), (req, res) => {
   console.log('User authenticated:', req.user);
   console.log('Session ID:', req.sessionID);
-  console.log('Session:', req.session);
 
-  // Set explicit cookie header for debugging
-  res.header('Set-Cookie', `connect.sid=${req.sessionID}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${24 * 60 * 60}`);
+  // Explicitly set cookie with all required attributes
+  const cookieOptions = {
+    maxAge: 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/'
+  };
 
+  res.cookie('connect.sid', req.sessionID, cookieOptions);
   res.redirect(`${process.env.REACT_APP_FRONTEND_URL}/dashboard`);
 });
+
 
 app.get('/api/repo', ensureAuthenticated, async (req, res) => {
   const { accessToken } = req.user;
