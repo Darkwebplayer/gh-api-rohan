@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import IssueList from './components/IssueList';
@@ -16,6 +16,12 @@ function App() {
           <Route path="/repo/:id/issues" element={<IssueList />} />
           <Route path="/repo/:id/pulls" element={<PullList />} />
           <Route path="/search" element={<SearchResults />} />
+
+          {/* Add this route to handle the GitHub callback */}
+          <Route
+            path="/auth/github/callback"
+            element={<Navigate to="/dashboard" replace />}
+          />
         </Routes>
       </Router>
     </div>
