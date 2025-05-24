@@ -9,11 +9,27 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+
 app.use(cors({
   origin: process.env.REACT_APP_FRONTEND_URL,
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: false,cookie: {sameSite: 'none',  secure: true     } }));
+
+// Use environment variable for session secret
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'keyboard cat', // Use env variable in production
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -208,7 +224,7 @@ app.get('/logout', (req, res) => {
     }
     req.session.destroy(() => {
       res.clearCookie('connect.sid'); // Clear session cookie
-      res.redirect('https://github-oath-frontend.onrender.com');
+      res.redirect(process.env.REACT_APP_FRONTEND_URL || 'https://github-oath-frontend.onrender.com');
     });
   });
 });
