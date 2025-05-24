@@ -1,61 +1,69 @@
 const express = require('express');
-const session = require('express-session');
 const passport = require('passport');
 const GitHubStrategy = require('passport-github2').Strategy;
+const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const cors = require('cors');
 require('dotenv').config();
 
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CRITICAL: Trust proxy for cross-domain cookies behind Render.com
+// Trust proxy for deployment
 app.set('trust proxy', 1);
 
-// Add explicit CORS headers for all requests
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.REACT_APP_FRONTEND_URL);
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
-
-// Standard CORS middleware
+// CORS configuration
 app.use(cors({
   origin: process.env.REACT_APP_FRONTEND_URL,
   credentials: true
 }));
 
-// Session configuration optimized for cross-domain (Vercel + Render)
-app.use(session({
-  name: 'github_session', // Custom name instead of connect.sid
-  secret: process.env.SESSION_SECRET || 'keyboard cat',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    sameSite: 'none', // MUST be 'none' for cross-domain
-    secure: true,     // MUST be true with sameSite=none
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    path: '/'
-  },
-  proxy: true // Trust the reverse proxy
-}));
-
-
+app.use(express.json());
 app.use(passport.initialize());
-app.use(passport.session());
 
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((obj, done) => done(null, obj));
+// JWT utilities
+const generateJWT = (user) => {
+  const payload = {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    email: user.emails?.[0]?.value,
+    avatar: user.photos?.[0]?.value,
+    accessToken: user.accessToken
+  };
 
+  return jwt.sign(payload, process.env.JWT_SECRET || 'your-secret-key', {
+    expiresIn: '7d'
+  });
+};
+
+const verifyJWT = (token) => {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+  } catch (error) {
+    return null;
+  }
+};
+
+// JWT Authentication middleware
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  const user = verifyJWT(token);
+  if (!user) {
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
+
+  req.user = user;
+  next();
+}
+
+// Passport GitHub Strategy
 passport.use(new GitHubStrategy({
   clientID: process.env.GITHUB_CLIENT_ID,
   clientSecret: process.env.GITHUB_CLIENT_SECRET,
@@ -65,69 +73,39 @@ passport.use(new GitHubStrategy({
   return done(null, profile);
 }));
 
-function ensureAuthenticated(req, res, next) {
-  if (req.isAuthenticated()) return next();
-  res.status(401).json({ error: 'Unauthorized' });
-}
-
+// Routes
 app.get('/', (req, res) => {
   res.send('Welcome to the GitHub OAuth Dashboard API');
-}
+});
+
+// GitHub OAuth routes
+app.get('/auth/github', passport.authenticate('github', {
+  scope: ['user', 'repo'],
+  session: false
+}));
+
+app.get('/auth/github/callback',
+  passport.authenticate('github', {
+    failureRedirect: `${process.env.REACT_APP_FRONTEND_URL}/login?error=auth_failed`,
+    session: false
+  }),
+  (req, res) => {
+    console.log('User authenticated:', req.user.username);
+
+    const token = generateJWT(req.user);
+
+    // Redirect to frontend with token
+    res.redirect(`${process.env.REACT_APP_FRONTEND_URL}/dashboard?token=${token}`);
+  }
 );
 
-// Get authenticated user info
-app.get('/api/user', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json(req.user);
-  } else {
-    res.status(401).json({ error: 'Not authenticated' });
-  }
+// API routes
+app.get('/api/user', authenticateToken, (req, res) => {
+  const { accessToken, ...userInfo } = req.user;
+  res.json(userInfo);
 });
 
-
-
-
-app.get('/auth/github', passport.authenticate('github', { scope: ['user', 'repo'] }));
-// app.get('auth/github', passport.authenticate('github', { failureRedirect: '/login' }), (req, res) => {
-//   res.redirect('http://localhost:3000/dashboard');
-// }
-// );
-
-
-
-app.get('/auth/github/callback', passport.authenticate('github', {
-  failureRedirect: `${process.env.REACT_APP_FRONTEND_URL}/login`,
-  session: true
-}), (req, res) => {
-  console.log('User authenticated:', req.user);
-  console.log('Session ID:', req.sessionID);
-
-  // Force save the session before redirecting
-  req.session.save((err) => {
-    if (err) {
-      console.error('Session save error:', err);
-    }
-
-    // Set explicit cookie options for the redirect
-    const cookieOptions = {
-      maxAge: 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      path: '/'
-    };
-
-    // Explicitly set the cookie (belt and suspenders approach)
-    res.cookie('github_session', req.sessionID, cookieOptions);
-
-    // Redirect to frontend
-    res.redirect(`${process.env.REACT_APP_FRONTEND_URL}/dashboard`);
-  });
-});
-
-
-
-app.get('/api/repo', ensureAuthenticated, async (req, res) => {
+app.get('/api/repo', authenticateToken, async (req, res) => {
   const { accessToken } = req.user;
   try {
     const { data } = await axios.get('https://api.github.com/user/repos', {
@@ -135,11 +113,12 @@ app.get('/api/repo', ensureAuthenticated, async (req, res) => {
     });
     res.json(data);
   } catch (err) {
+    console.error('Repo fetch error:', err.message);
     res.status(500).json({ error: 'Failed to fetch repositories' });
   }
 });
 
-app.get('/api/repo/:id', ensureAuthenticated, async (req, res) => {
+app.get('/api/repo/:id', authenticateToken, async (req, res) => {
   const { accessToken } = req.user;
   const repoId = req.params.id;
   try {
@@ -148,11 +127,12 @@ app.get('/api/repo/:id', ensureAuthenticated, async (req, res) => {
     });
     res.json(data);
   } catch (err) {
+    console.error('Repo detail fetch error:', err.message);
     res.status(500).json({ error: 'Failed to fetch repo details' });
   }
 });
 
-app.get('/api/repo/:id/issues', ensureAuthenticated, async (req, res) => {
+app.get('/api/repo/:id/issues', authenticateToken, async (req, res) => {
   const { accessToken } = req.user;
   const repoId = req.params.id;
   try {
@@ -161,11 +141,12 @@ app.get('/api/repo/:id/issues', ensureAuthenticated, async (req, res) => {
     });
     res.json(data);
   } catch (err) {
+    console.error('Issues fetch error:', err.message);
     res.status(500).json({ error: 'Failed to fetch issues' });
   }
 });
 
-app.get('/api/repo/:id/pull', ensureAuthenticated, async (req, res) => {
+app.get('/api/repo/:id/pulls', authenticateToken, async (req, res) => {
   const { accessToken } = req.user;
   const repoId = req.params.id;
   try {
@@ -174,14 +155,13 @@ app.get('/api/repo/:id/pull', ensureAuthenticated, async (req, res) => {
     });
     res.json(data);
   } catch (err) {
+    console.error('Pull requests fetch error:', err.message);
     res.status(500).json({ error: 'Failed to fetch pull requests' });
   }
 });
 
-
-
-app.get('/api/search', ensureAuthenticated, async (req, res) => {
-  const { accessToken, username } = req.user;
+app.get('/api/search', authenticateToken, async (req, res) => {
+  const { accessToken } = req.user;
   const query = req.query.query;
 
   if (!query) {
@@ -189,7 +169,6 @@ app.get('/api/search', ensureAuthenticated, async (req, res) => {
   }
 
   try {
-    // 1. Search user-owned repositories
     const { data: userRepos } = await axios.get('https://api.github.com/user/repos', {
       headers: { Authorization: `token ${accessToken}` }
     });
@@ -202,7 +181,6 @@ app.get('/api/search', ensureAuthenticated, async (req, res) => {
       return res.json({ source: 'user', repo: matchedRepo });
     }
 
-    // 2. If not found, search GitHub globally
     const { data: globalSearch } = await axios.get(`https://api.github.com/search/repositories?q=${query}`, {
       headers: { Authorization: `token ${accessToken}` }
     });
@@ -219,9 +197,8 @@ app.get('/api/search', ensureAuthenticated, async (req, res) => {
   }
 });
 
-
-app.get('/api/suggest', ensureAuthenticated, async (req, res) => {
-  const { accessToken, username } = req.user;
+app.get('/api/suggest', authenticateToken, async (req, res) => {
+  const { accessToken } = req.user;
   const query = req.query.query?.toLowerCase();
 
   if (!query) {
@@ -231,7 +208,6 @@ app.get('/api/suggest', ensureAuthenticated, async (req, res) => {
   try {
     const headers = { Authorization: `token ${accessToken}` };
 
-    // Fetch user's own repos
     const userReposRes = await axios.get('https://api.github.com/user/repos?per_page=100', { headers });
     const userRepos = userReposRes.data
       .filter(repo => repo.name.toLowerCase().includes(query))
@@ -243,7 +219,6 @@ app.get('/api/suggest', ensureAuthenticated, async (req, res) => {
         source: 'user'
       }));
 
-    // Fetch global repos
     const globalReposRes = await axios.get(`https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=5`, { headers });
     const globalRepos = globalReposRes.data.items
       .map(repo => ({
@@ -254,9 +229,7 @@ app.get('/api/suggest', ensureAuthenticated, async (req, res) => {
         source: 'global'
       }));
 
-    // Combine both
     const combined = [...userRepos, ...globalRepos];
-
     res.json(combined);
   } catch (error) {
     console.error('Suggestion error:', error.message);
@@ -264,17 +237,4 @@ app.get('/api/suggest', ensureAuthenticated, async (req, res) => {
   }
 });
 
-app.get('/logout', (req, res) => {
-  req.logout(function (err) {
-    if (err) {
-      return next(err);
-    }
-    req.session.destroy(() => {
-      res.clearCookie('connect.sid'); // Clear session cookie
-      res.redirect(process.env.REACT_APP_FRONTEND_URL || 'https://github-oath-frontend.onrender.com');
-    });
-  });
-});
-
-
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

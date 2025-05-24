@@ -1,7 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import './Login.css';
 
 const Login = () => {
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    // If already authenticated, redirect to dashboard
+    if (isAuthenticated() && user) {
+      navigate('/dashboard');
+    }
+
+    // Check for error in URL params
+    const error = searchParams.get('error');
+    if (error === 'auth_failed') {
+      alert('Authentication failed. Please try again.');
+    }
+  }, [isAuthenticated, user, navigate, searchParams]);
+
   const handleLogin = () => {
     window.location.href = `${process.env.REACT_APP_BACKEND_URL}/auth/github`;
   };
