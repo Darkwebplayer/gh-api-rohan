@@ -9,25 +9,26 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-
+app.set('trust proxy', 1);
 app.use(cors({
-  origin: process.env.REACT_APP_FRONTEND_URL,
+  origin: process.env.REACT_APP_FRONTEND_URL, // Your Vercel frontend URL
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposedHeaders: ['Set-Cookie']
 }));
-
 // Use environment variable for session secret
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'keyboard cat', // Use env variable in production
+  secret: process.env.SESSION_SECRET || 'keyboard cat',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none', // MUST be 'none' for cross-site cookies
+    secure: true,     // MUST be true with sameSite=none
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+  },
+  proxy: true // Trust the reverse proxy
 }));
 
 app.use(passport.initialize());
@@ -72,11 +73,18 @@ app.get('/auth/github', passport.authenticate('github', { scope: ['user', 'repo'
 //   res.redirect('http://localhost:3000/dashboard');
 // }
 // );
+
 app.get('/auth/github/callback', passport.authenticate('github', {
   failureRedirect: `${process.env.REACT_APP_FRONTEND_URL}/login`,
   session: true
 }), (req, res) => {
   console.log('User authenticated:', req.user);
+  console.log('Session ID:', req.sessionID);
+  console.log('Session:', req.session);
+
+  // Set explicit cookie header for debugging
+  res.header('Set-Cookie', `connect.sid=${req.sessionID}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${24 * 60 * 60}`);
+
   res.redirect(`${process.env.REACT_APP_FRONTEND_URL}/dashboard`);
 });
 

@@ -3,7 +3,7 @@ import './Dashboard.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import axios from 'axios';
-import RepoSearchBar from '../components/RepoSearchBar'; 
+import RepoSearchBar from '../components/RepoSearchBar';
 import RepoCard from '../components/RepoCard';
 
 const Dashboard = () => {
@@ -15,7 +15,7 @@ const Dashboard = () => {
       try {
         // Step 1: Check if user is authenticated
         const userResponse = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/user`, {
-          withCredentials: true,
+          withCredentials: true,  // CRITICAL for cross-domain cookies
         });
         console.log("User:", userResponse.data);
         setUser(userResponse.data);
@@ -27,12 +27,16 @@ const Dashboard = () => {
         setRepos(repoResponse.data);
       } catch (error) {
         console.error("Authentication or Repo Fetch Failed:", error);
+        // Redirect to login if authentication fails
+        if (error.response && error.response.status === 401) {
+          window.location.href = '/';
+        }
       }
     };
 
     checkAuthAndFetchRepos();
   }, []);
-  
+
   return (
     <div className="dashboard container-fluid bg-light text-dark min-vh-100">
       <header className="dashboard-header bg-dark text-white p-3 d-flex align-items-center justify-content-between border-bottom border-secondary">
@@ -121,7 +125,7 @@ const Dashboard = () => {
           </div>
         )}
 
-      </div>      
+      </div>
     </div>
   );
 };
